@@ -1,0 +1,32 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare project
+        run: |
+          set -e
+          mkdir work
+          for f in FaceGuard*.zip; do unzip -qo "$f" -d work; done
+          M=$(ls *.tflite 2>/dev/null | head -n 1)
+          test -n "$M" || { echo "koi .tflite file repo me upload karo"; exit 1; }
+          mkdir -p work/FaceGuard/app/src/main/assets
+          cp "$M" work/FaceGuard/app/src/main/assets/mobilefacenet.tflite
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+      - name: Build
+        working-directory: work/FaceGuard
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FaceGuard-APK
+          path: work/FaceGuard/app/build/outputs/apk/debug/*.apk
